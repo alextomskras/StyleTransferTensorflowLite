@@ -231,26 +231,55 @@ class CameraFragment : Fragment() {
     )
   }
 
-  private fun getCameraId(): String {
-    // Get list of all compatible cameras
-    val cameraIds = cameraManager.cameraIdList.filter {
-      val characteristics = cameraManager.getCameraCharacteristics(it)
-      val capabilities = characteristics.get(
-        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES
-      )
-      capabilities?.contains(
-        CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE
-      ) ?: false
-    }
+//  private fun getCameraId(): String {
+//    // Get list of all compatible cameras
+//    val cameraIds = cameraManager.cameraIdList.filter {
+//      val characteristics = cameraManager.getCameraCharacteristics(it)
+//      val capabilities = characteristics.get(
+//        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES
+//      )
+//      capabilities?.contains(
+//        CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE
+//      ) ?: false
+//    }
+//
+//    // Iterate over the list of cameras and return the one that is facing the selected direction
+//    cameraIds.forEach { id ->
+//      val characteristics = cameraManager.getCameraCharacteristics(id)
+//      if (cameraFacing == characteristics.get(CameraCharacteristics.LENS_FACING)) {
+//        return id
+//      }
+//    }
+//    return cameraId.first().toString()
+//  }
+private fun getCameraId(): String {
+  val cameraIds = cameraManager.cameraIdList.filter {
+    val chars = cameraManager.getCameraCharacteristics(it)
+    chars.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)?.contains(
+      CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE
+    ) ?: false
+  }
 
-    // Iterate over the list of cameras and return the one that is facing the selected direction
-    cameraIds.forEach { id ->
-      val characteristics = cameraManager.getCameraCharacteristics(id)
-      if (cameraFacing == characteristics.get(CameraCharacteristics.LENS_FACING)) {
-        return id
-      }
-    }
-    return cameraId.first().toString()
+  // Сначала ищем камеры с нужным направлением (front/back)
+  val camerasWithCorrectFacing = cameraIds.filter { id ->
+    cameraManager.getCameraCharacteristics(id)
+      .get(CameraCharacteristics.LENS_FACING) == cameraFacing
+  }
+
+  // Пытаемся найти среди них камеру со вспышкой
+  camerasWithCorrectFacing.firstOrNull { id ->
+    cameraManager.getCameraCharacteristics(id)
+      .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
+  }?.let { return it }
+
+  // Если не нашли со вспышкой - возвращаем первую камеру с правильным направлением
+  return camerasWithCorrectFacing.firstOrNull()
+    ?: throw IllegalStateException("No cameras available for facing: $cameraFacing")
+}
+
+  fun isFlashAvailable(): Boolean {
+    return cameraManager.getCameraCharacteristics(cameraId)
+      .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
   }
 
   /**
@@ -258,11 +287,11 @@ class CameraFragment : Fragment() {
    * suspend coroutine
    */
   private suspend fun startCaptureSession(device: CameraDevice):
-    CameraCaptureSession = suspendCoroutine { cont ->
+          CameraCaptureSession = suspendCoroutine { cont ->
 
-      // Create list of Surfaces where the camera will output frames
-      val targets: MutableList<Surface> =
-        arrayOf(viewFinder.holder.surface, imageReader.surface).toMutableList()
+    // Create list of Surfaces where the camera will output frames
+    val targets: MutableList<Surface> =
+      arrayOf(viewFinder.holder.surface, imageReader.surface).toMutableList()
 
       // Create a capture session using the predefined targets; this also involves defining the
       // session state callback to be notified of when the session is ready
@@ -334,8 +363,11 @@ class CameraFragment : Fragment() {
     ).apply {
       addTarget(imageReader.surface)
       // Включаем вспышку
-      set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-      set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE)
+      if (isFlashAvailable()) {
+        // Только если вспышка доступна
+        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+        set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE)
+      }
     }
     session.capture(
       captureRequest.build(),
