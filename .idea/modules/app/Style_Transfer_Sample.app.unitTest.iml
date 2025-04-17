@@ -25,6 +25,7 @@
           <stringArguments>
             <stringArg name="classpath">
               <args>
+                <arg>$MODULE_DIR$/../../../app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar</arg>
                 <arg>$USER_HOME$/.gradle/caches/transforms-3/f7d3151a1e12a45b6c33ccb8e8a683ec/transformed/material-1.1.0-alpha08-api.jar</arg>
                 <arg>$USER_HOME$/.gradle/caches/transforms-3/fdb36539c7b5ab722fe7e30b5b6723ae/transformed/appcompat-1.1.0-rc01-api.jar</arg>
                 <arg>$USER_HOME$/.gradle/caches/transforms-3/168f19e4f60c68d447906e88841ccacc/transformed/jetified-camera-camera2-1.0.0-alpha02-api.jar</arg>

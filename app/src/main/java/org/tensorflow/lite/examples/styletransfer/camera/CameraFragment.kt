@@ -429,14 +429,31 @@ class CameraFragment : Fragment() {
   }
 
   /**
-   Keeping a reference to the activity to make communication between it and this fragment
-   easier.
+  Keeping a reference to the activity to make communication between it and this fragment
+  easier.
    */
   override fun onAttach(context: Context) {
     super.onAttach(context)
     callback = context as OnCaptureFinished
   }
 
+  fun setFlashMode(enable: Boolean) {
+    fragmentScope.launch(Dispatchers.Main) {
+      val captureRequest = session.device.createCaptureRequest(
+        CameraDevice.TEMPLATE_PREVIEW
+      ).apply {
+        addTarget(viewFinder.holder.surface)
+        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+        set(
+          CaptureRequest.FLASH_MODE,
+          if (enable) CaptureRequest.FLASH_MODE_TORCH
+          else CaptureRequest.FLASH_MODE_OFF
+        )
+      }
+      session.setRepeatingRequest(captureRequest.build(), null, cameraHandler)
+    }
+  }
+  
   fun setFacingCamera(lensFacing: Int) {
     cameraFacing = lensFacing
   }
