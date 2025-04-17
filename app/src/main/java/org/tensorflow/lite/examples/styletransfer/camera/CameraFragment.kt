@@ -17,7 +17,6 @@
 package org.tensorflow.lite.examples.styletransfer.camera
 
 import android.annotation.SuppressLint
-import androidx.lifecycle.Observer
 import android.content.Context
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCaptureSession
@@ -33,7 +32,6 @@ import android.media.ImageReader
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
-import androidx.fragment.app.Fragment
 import android.util.Log
 import android.util.Size
 import android.view.LayoutInflater
@@ -42,6 +40,13 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.tensorflow.lite.examples.styletransfer.ImageUtils
 import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
@@ -54,11 +59,6 @@ import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import org.tensorflow.lite.examples.styletransfer.ImageUtils
 
 @SuppressWarnings("GoodTime")
 class CameraFragment : Fragment() {
@@ -195,7 +195,12 @@ class CameraFragment : Fragment() {
     cameraInitialized = true
     val captureRequest = camera.createCaptureRequest(
       CameraDevice.TEMPLATE_PREVIEW
-    ).apply { addTarget(viewFinder.holder.surface) }
+    ).apply {
+      addTarget(viewFinder.holder.surface)
+      // Включаем вспышку для предпросмотра
+      set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+      set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
+    }
 
     // This will keep sending the capture request as frequently as possible until the
     // session is torn down or session.stopRepeating() is called
@@ -326,7 +331,12 @@ class CameraFragment : Fragment() {
 
     val captureRequest = session.device.createCaptureRequest(
       CameraDevice.TEMPLATE_STILL_CAPTURE
-    ).apply { addTarget(imageReader.surface) }
+    ).apply {
+      addTarget(imageReader.surface)
+      // Включаем вспышку
+      set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+      set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE)
+    }
     session.capture(
       captureRequest.build(),
       object : CameraCaptureSession.CaptureCallback() {
@@ -453,7 +463,7 @@ class CameraFragment : Fragment() {
       session.setRepeatingRequest(captureRequest.build(), null, cameraHandler)
     }
   }
-  
+
   fun setFacingCamera(lensFacing: Int) {
     cameraFacing = lensFacing
   }
